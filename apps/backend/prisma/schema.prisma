@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType    = "library"
+  binaryTargets = ["native"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProjectStatus {
+  active
+  completed
+  archived
+}
+
+enum TaskStatus {
+  pending
+  in_progress
+  completed
+  cancelled
+}
+
+enum MemberRole {
+  owner
+  admin
+  member
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  fullName     String
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile      UserProfile?
+  projects     Project[]       @relation("OwnedProjects")
+  memberships  ProjectMember[]
+  tasks        Task[]          @relation("AssignedTasks")
+  comments     TaskComment[]
+  activityLogs ActivityLog[]
+  refreshTokens RefreshToken[]
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserProfile {
+  userId    String   @id
+  avatarUrl String?
+  bio       String?
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Project {
+  id          String        @id @default(uuid())
+  name        String
+  description String?
+  status      ProjectStatus @default(active)
+  ownerId     String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  owner        User            @relation("OwnedProjects", fields: [ownerId], references: [id])
+  tasks        Task[]
+  members      ProjectMember[]
+  activityLogs ActivityLog[]
+}
+
+model Task {
+  id          String     @id @default(uuid())
+  projectId   String
+  title       String
+  description String?
+  priority    Int        @default(1)
+  status      TaskStatus @default(pending)
+  dueDate     DateTime?
+  assignedTo  String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  project  Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee User?         @relation("AssignedTasks", fields: [assignedTo], references: [id])
+  comments TaskComment[]
+}
+
+model ProjectMember {
+  projectId String
+  userId    String
+  role      MemberRole @default(member)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, userId])
+}
+
+model TaskComment {
+  id        String   @id @default(uuid())
+  taskId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  projectId String?
+  userId    String?
+  action    String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
