@@ -42,8 +42,6 @@ apps/
 * TypeScript
 * Tailwind CSS
 * Framer Motion (UI interactions)
-* MDX-ready documentation system
-* SEO optimized metadata + OpenGraph support
 
 ---
 
